@@ -61,8 +61,12 @@ export type RepositoryOverview = {
 
 export type WorkflowPlanResponse = {
   workflow_id: string;
+  issue_url: string;
+  mode: "learn" | "auto_fix";
+  repository_path: string | null;
   stage: WorkflowStage;
   approval_status: ApprovalStatus;
+  final_approval_status: ApprovalStatus;
   repository: RepositoryOverview | null;
   difficulty: {
     level: "Easy" | "Medium" | "Hard" | "Expert";
@@ -94,7 +98,37 @@ export type WorkflowPlanResponse = {
     disagreement: string[];
     model_notes: Record<string, string>;
   } | null;
+  review_report: ReviewReport | null;
   audit_events: Array<Record<string, unknown>>;
+};
+
+export type ReviewReport = {
+  issue_summary: string;
+  root_cause: string;
+  files_changed: string[];
+  code_diff: string | null;
+  tests_run: string[];
+  coverage: string | null;
+  security_review: {
+    score: number;
+    findings: Array<{
+      rule: string;
+      file: string;
+      line: number;
+      severity: "Low" | "Medium" | "High" | "Critical";
+      message: string;
+    }>;
+    summary: string;
+  } | null;
+  impact_analysis: {
+    files_modified: string[];
+    functions_modified: string[];
+    classes_modified: string[];
+    dependency_impact: string[];
+    risk_level: "Low" | "Medium" | "High" | "Critical";
+  } | null;
+  risk_assessment: string[];
+  reasoning: string[];
 };
 
 export type ApprovalResponse = {

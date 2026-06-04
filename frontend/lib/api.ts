@@ -100,3 +100,34 @@ export async function cloneRepository(input: {
   }
   return response.json();
 }
+
+export async function fetchWorkflow(workflowId: string): Promise<WorkflowPlanResponse> {
+  const response = await fetch(`${API_BASE_URL}/api/workflows/${workflowId}`, { cache: "no-store" });
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(text || `Workflow fetch failed: ${response.status}`);
+  }
+  return response.json();
+}
+
+export async function runTests(workflowId: string): Promise<WorkflowPlanResponse> {
+  const response = await fetch(`${API_BASE_URL}/api/workflows/${workflowId}/run-tests`, {
+    method: "POST"
+  });
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(text || `Tests run failed: ${response.status}`);
+  }
+  return response.json();
+}
+
+export async function runSecurityScan(workflowId: string): Promise<WorkflowPlanResponse> {
+  const response = await fetch(`${API_BASE_URL}/api/workflows/${workflowId}/security-scan`, {
+    method: "POST"
+  });
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(text || `Security scan failed: ${response.status}`);
+  }
+  return response.json();
+}

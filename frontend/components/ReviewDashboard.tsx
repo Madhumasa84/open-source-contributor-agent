@@ -1,14 +1,24 @@
 "use client";
 
-import { FileCode2, GitPullRequestDraft, ShieldAlert, TestTube2 } from "lucide-react";
+import { AlertTriangle, BookOpen, FileCode2, GitPullRequestDraft, Loader2, ShieldAlert, TestTube2 } from "lucide-react";
 import { useState } from "react";
 import clsx from "clsx";
 import type { WorkflowPlanResponse } from "@/lib/types";
+import { runSecurityScan, runTests } from "@/lib/api";
 
-const tabs = ["Summary", "Files", "Tests", "Security", "Audit"] as const;
+const tabs = ["Summary", "Files", "Onboarding", "Tests", "Security", "Audit"] as const;
 
-export function ReviewDashboard({ result }: { result: WorkflowPlanResponse | null }) {
+export function ReviewDashboard({
+  result,
+  setResult
+}: {
+  result: WorkflowPlanResponse | null;
+  setResult: (r: WorkflowPlanResponse | null) => void;
+}) {
   const [activeTab, setActiveTab] = useState<(typeof tabs)[number]>("Summary");
+  const [runningTests, setRunningTests] = useState(false);
+  const [runningSecurity, setRunningSecurity] = useState(false);
+  const [execError, setExecError] = useState<string | null>(null);
 
   if (!result) {
     return (
@@ -16,6 +26,36 @@ export function ReviewDashboard({ result }: { result: WorkflowPlanResponse | nul
         Awaiting workflow output
       </section>
     );
+  }
+
+  async function triggerTests() {
+    if (!result) return;
+    setRunningTests(true);
+    setExecError(null);
+    try {
+      const resp = await runTests(result.workflow_id);
+      setResult(resp);
+      setActiveTab("Tests");
+    } catch (err) {
+      setExecError(err instanceof Error ? err.message : "Failed to run tests");
+    } finally {
+      setRunningTests(false);
+    }
+  }
+
+  async function triggerSecurity() {
+    if (!result) return;
+    setRunningSecurity(true);
+    setExecError(null);
+    try {
+      const resp = await runSecurityScan(result.workflow_id);
+      setResult(resp);
+      setActiveTab("Security");
+    } catch (err) {
+      setExecError(err instanceof Error ? err.message : "Failed to run security scan");
+    } finally {
+      setRunningSecurity(false);
+    }
   }
 
   return (
@@ -28,15 +68,15 @@ export function ReviewDashboard({ result }: { result: WorkflowPlanResponse | nul
         <GitPullRequestDraft aria-hidden className="h-5 w-5 text-pine" />
       </div>
 
-      <div className="grid grid-cols-4 border-b border-line">
+      <div className="grid grid-cols-3 sm:grid-cols-6 border-b border-line">
         {tabs.map((tab) => (
           <button
             key={tab}
             type="button"
             onClick={() => setActiveTab(tab)}
             className={clsx(
-              "h-10 border-r border-line px-2 text-xs font-medium last:border-r-0",
-              activeTab === tab ? "bg-mint text-pine" : "bg-white text-ink/65 hover:bg-panel"
+              "h-10 border-r border-line px-1 text-xs font-medium last:border-r-0 truncate",
+              activeTab === tab ? "bg-mint text-pine font-semibold" : "bg-white text-ink/65 hover:bg-panel"
             )}
           >
             {tab}
@@ -74,17 +114,140 @@ export function ReviewDashboard({ result }: { result: WorkflowPlanResponse | nul
           </div>
         )}
 
+        {activeTab === "Onboarding" && (
+          <div className="space-y-4">
+            {result.repository ? (
+              <>
+                <ListBlock
+                  title="Build & Test Instructions"
+                  items={
+                    result.repository.build_systems.includes("npm")
+                      ? ["npm install", "npm test", "npm run lint"]
+                      : result.repository.build_systems.includes("Python packaging")
+                      ? ["python -m venv .venv", "pip install -e .[dev]", "pytest"]
+                      : result.repository.build_systems.includes("Docker Compose")
+                      ? ["docker compose up --build"]
+                      : ["Read README and dependency manifests before running commands."]
+                  }
+                />
+                <ListBlock
+                  title="Architecture Overview"
+                  items={result.repository.architecture.length ? result.repository.architecture : ["Standard module layout"]}
+                />
+                <ListBlock
+                  title="Important Modules"
+                  items={result.repository.important_files.slice(0, 8)}
+                />
+                <ListBlock
+                  title="Development Workflow"
+                  items={[
+                    "Create an isolated branch or worktree.",
+                    "Reproduce the issue before editing code.",
+                    "Add or update a focused regression test.",
+                    "Run tests, linting, type checks, and security review.",
+                    "Prepare a review report before any PR action."
+                  ]}
+                />
+              </>
+            ) : (
+              <div className="rounded-md border border-line bg-panel p-4 text-center text-sm text-ink/60">
+                Awaiting repository path analysis. Please provide a local repository path or clone an approved repository first.
+              </div>
+            )}
+          </div>
+        )}
+
         {activeTab === "Tests" && (
           <div className="space-y-4">
-            <MetricRow icon={<TestTube2 aria-hidden className="h-4 w-4" />} label="Status" value="Pending approval" />
-            <ListBlock title="Commands" items={result.plan.tests_to_run} />
+            {result.review_report?.tests_run && result.review_report.tests_run.length > 0 ? (
+              <>
+                <MetricRow icon={<TestTube2 aria-hidden className="h-4 w-4" />} label="Status" value="Completed Successfully" />
+                <ListBlock title="Executed Test Commands" items={result.review_report.tests_run} />
+              </>
+            ) : (
+              <>
+                <MetricRow icon={<TestTube2 aria-hidden className="h-4 w-4" />} label="Status" value="Not run yet" />
+                <ListBlock title="Target Commands" items={result.plan.tests_to_run} />
+                {result.repository_path ? (
+                  <button
+                    type="button"
+                    onClick={triggerTests}
+                    disabled={runningTests}
+                    className="flex w-full items-center justify-center gap-2 rounded-md bg-pine h-10 text-sm font-semibold text-white hover:bg-pine/90 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {runningTests && <Loader2 aria-hidden className="h-4 w-4 animate-spin" />}
+                    Execute Tests
+                  </button>
+                ) : (
+                  <div className="rounded-md border border-line bg-panel p-3 text-xs text-ink/60 text-center">
+                    Repository not cloned or analyzed yet. Clone the repository first to run tests.
+                  </div>
+                )}
+              </>
+            )}
+            {execError && (
+              <div className="flex items-start gap-2 rounded-md border border-danger/30 bg-danger/10 p-3 text-xs text-danger">
+                <AlertTriangle aria-hidden className="h-4 w-4 shrink-0 mt-0.5" />
+                <span>{execError}</span>
+              </div>
+            )}
           </div>
         )}
 
         {activeTab === "Security" && (
           <div className="space-y-4">
-            <MetricRow icon={<ShieldAlert aria-hidden className="h-4 w-4" />} label="Score" value="Pending scan" />
-            <ListBlock title="Checks" items={["Secrets", "Path traversal", "Command injection", "SQL injection", "Auth boundaries"]} />
+            {result.review_report?.security_review ? (
+              <>
+                <MetricRow
+                  icon={<ShieldAlert aria-hidden className="h-4 w-4" />}
+                  label="Security Score"
+                  value={`${result.review_report.security_review.score}/100`}
+                />
+                <div>
+                  <h3 className="mb-2 text-xs font-semibold uppercase text-ink/50">Findings</h3>
+                  {result.review_report.security_review.findings.length > 0 ? (
+                    <ul className="divide-y divide-line rounded-md border border-line bg-white overflow-hidden">
+                      {result.review_report.security_review.findings.map((finding, idx) => (
+                        <li key={idx} className="p-3 text-xs leading-5">
+                          <div className="flex justify-between font-semibold">
+                            <span className="text-danger">{finding.rule}</span>
+                            <span className="text-ink/50 uppercase">{finding.severity}</span>
+                          </div>
+                          <div className="mt-1 text-ink/80">{finding.message}</div>
+                          <div className="mt-1 text-ink/40 font-mono">
+                            {finding.file}:{finding.line}
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <div className="rounded-md border border-line bg-panel p-4 text-center text-sm text-pine font-medium">
+                      No security issues detected. Code matches standard security patterns!
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : (
+              <>
+                <MetricRow icon={<ShieldAlert aria-hidden className="h-4 w-4" />} label="Status" value="Pending Scan" />
+                <ListBlock title="Checks Configured" items={["Hardcoded secrets", "Path traversal", "Command injection", "SQL injection", "Auth bypasses"]} />
+                {result.repository_path ? (
+                  <button
+                    type="button"
+                    onClick={triggerSecurity}
+                    disabled={runningSecurity}
+                    className="flex w-full items-center justify-center gap-2 rounded-md bg-pine h-10 text-sm font-semibold text-white hover:bg-pine/90 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {runningSecurity && <Loader2 aria-hidden className="h-4 w-4 animate-spin" />}
+                    Run Security Scan
+                  </button>
+                ) : (
+                  <div className="rounded-md border border-line bg-panel p-3 text-xs text-ink/60 text-center">
+                    Repository not cloned or analyzed yet. Clone the repository first to run security review.
+                  </div>
+                )}
+              </>
+            )}
           </div>
         )}
 

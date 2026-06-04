@@ -2,8 +2,7 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
 
-from sqlalchemy import DateTime, String, Text
-from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy import DateTime, String, Text, JSON, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
@@ -24,7 +23,7 @@ class AuditEvent(Base):
     approval_id: Mapped[str | None] = mapped_column(String(80), nullable=True)
     input_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
     output_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
-    event_metadata: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+    event_metadata: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(UTC),

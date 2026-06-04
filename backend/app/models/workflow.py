@@ -1,8 +1,7 @@
 from datetime import UTC, datetime
 from uuid import uuid4
 
-from sqlalchemy import DateTime, ForeignKey, String, Text
-from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy import DateTime, ForeignKey, String, Text, JSON, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
@@ -21,13 +20,13 @@ class WorkflowRun(Base):
     status: Mapped[str] = mapped_column(String(40), default="pending")
     plan_approval_status: Mapped[str] = mapped_column(String(40), default="pending")
     final_approval_status: Mapped[str] = mapped_column(String(40), default="pending")
-    repository: Mapped[dict] = mapped_column(JSONB, default=dict)
-    difficulty: Mapped[dict] = mapped_column(JSONB, default=dict)
-    mentor: Mapped[dict] = mapped_column(JSONB, default=dict)
-    plan: Mapped[dict] = mapped_column(JSONB, default=dict)
-    consensus: Mapped[dict] = mapped_column(JSONB, default=dict)
-    audit_events: Mapped[list] = mapped_column(JSONB, default=list)
-    review_report: Mapped[dict] = mapped_column(JSONB, default=dict)
+    repository: Mapped[dict] = mapped_column(JSON, default=dict)
+    difficulty: Mapped[dict] = mapped_column(JSON, default=dict)
+    mentor: Mapped[dict] = mapped_column(JSON, default=dict)
+    plan: Mapped[dict] = mapped_column(JSON, default=dict)
+    consensus: Mapped[dict] = mapped_column(JSON, default=dict)
+    audit_events: Mapped[list] = mapped_column(JSON, default=list)
+    review_report: Mapped[dict] = mapped_column(JSON, default=dict)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )

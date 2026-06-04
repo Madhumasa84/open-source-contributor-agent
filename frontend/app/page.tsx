@@ -11,7 +11,8 @@ import {
   createWorkflowPlan,
   fetchGitHubIssue,
   fetchProviders,
-  submitApproval
+  submitApproval,
+  fetchWorkflow
 } from "@/lib/api";
 import type {
   ApprovalStatus,
@@ -70,6 +71,29 @@ export default function Home() {
     fetchProviders()
       .then(setProviders)
       .catch(() => setProviders(fallbackProviders));
+
+    const savedId = typeof window !== "undefined" ? localStorage.getItem("osca_workflow_id") : null;
+    if (savedId) {
+      setLoading(true);
+      fetchWorkflow(savedId)
+        .then((resp) => {
+          setResult(resp);
+          setIssueUrl(resp.issue_url);
+          setMode(resp.mode);
+          if (resp.repository_path) {
+            setRepositoryPath(resp.repository_path);
+          }
+        })
+        .catch((err) => {
+          console.error("Failed to restore workflow:", err);
+          if (typeof window !== "undefined") {
+            localStorage.removeItem("osca_workflow_id");
+          }
+        })
+        .finally(() => {
+          setLoading(false);
+        });
+    }
   }, []);
 
   const stage: WorkflowStage = result?.stage ?? "created";
@@ -94,6 +118,9 @@ export default function Home() {
       });
       setResult(response);
       setCloneResult(null);
+      if (typeof window !== "undefined") {
+        localStorage.setItem("osca_workflow_id", response.workflow_id);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Workflow request failed");
     } finally {
@@ -184,6 +211,9 @@ export default function Home() {
                 setResult(null);
                 setCloneResult(null);
                 setError(null);
+                if (typeof window !== "undefined") {
+                  localStorage.removeItem("osca_workflow_id");
+                }
               }}
               className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-line bg-white text-ink/70 hover:border-pine/50"
               title="Reset"
@@ -388,7 +418,7 @@ export default function Home() {
         </div>
       </section>
 
-      <ReviewDashboard result={result} />
+      <ReviewDashboard result={result} setResult={setResult} />
     </main>
   );
 }

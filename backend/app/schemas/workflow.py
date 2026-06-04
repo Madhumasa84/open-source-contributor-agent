@@ -4,7 +4,12 @@ from typing import Any, Literal
 from pydantic import AnyUrl, BaseModel, Field
 
 from app.schemas.provider import ProviderSelection
-from app.schemas.repository import DifficultyEstimate, RepositoryOverview
+from app.schemas.repository import (
+    DifficultyEstimate,
+    RepositoryOverview,
+    SecurityReview,
+    ImpactAnalysis,
+)
 
 
 class ApprovalStatus(StrEnum):
@@ -61,15 +66,33 @@ class ConsensusReview(BaseModel):
     model_notes: dict[str, str]
 
 
+class ReviewReport(BaseModel):
+    issue_summary: str
+    root_cause: str
+    files_changed: list[str]
+    code_diff: str | None = None
+    tests_run: list[str]
+    coverage: str | None = None
+    security_review: SecurityReview | None = None
+    impact_analysis: ImpactAnalysis | None = None
+    risk_assessment: list[str]
+    reasoning: list[str]
+
+
 class WorkflowPlanResponse(BaseModel):
     workflow_id: str
+    issue_url: str
+    mode: str
+    repository_path: str | None = None
     stage: WorkflowStage
     approval_status: ApprovalStatus
+    final_approval_status: ApprovalStatus = ApprovalStatus.pending
     repository: RepositoryOverview | None
     difficulty: DifficultyEstimate
     mentor: MentorExplanation
     plan: FixPlan
     consensus: ConsensusReview | None = None
+    review_report: ReviewReport | None = None
     audit_events: list[dict[str, Any]]
 
 

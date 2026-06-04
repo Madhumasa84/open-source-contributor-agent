@@ -1,20 +1,6 @@
 from pydantic import BaseModel, Field
 
-from app.schemas.repository import ImpactAnalysis, SecurityReview
-from app.schemas.workflow import FixPlan
-
-
-class ReviewReport(BaseModel):
-    issue_summary: str
-    root_cause: str
-    files_changed: list[str]
-    code_diff: str | None = None
-    tests_run: list[str]
-    coverage: str | None = None
-    security_review: SecurityReview | None = None
-    impact_analysis: ImpactAnalysis | None = None
-    risk_assessment: list[str]
-    reasoning: list[str]
+from app.schemas.workflow import FixPlan, ReviewReport
 
 
 class PRDraft(BaseModel):

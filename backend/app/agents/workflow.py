@@ -14,6 +14,7 @@ from app.schemas.workflow import (
     WorkflowPlanResponse,
     WorkflowStage,
 )
+from app.schemas.review import ReviewReport
 from app.services.audit import AuditLogger, AuditRecord
 from app.services.difficulty import DifficultyEstimator
 from app.services.repository_analyzer import RepositoryAnalyzer
@@ -37,6 +38,7 @@ class WorkflowState:
     mentor: MentorExplanation | None = None
     plan: FixPlan | None = None
     consensus: ConsensusReview | None = None
+    review_report: ReviewReport | None = None
     audit: AuditLogger = field(default_factory=AuditLogger)
 
 
@@ -206,12 +208,17 @@ class OpenSourceContributorWorkflow:
             raise RuntimeError("workflow state is incomplete")
         return WorkflowPlanResponse(
             workflow_id=state.workflow_id,
+            issue_url=state.issue_url,
+            mode=state.mode,
+            repository_path=state.repository_path,
             stage=state.stage,
             approval_status=state.plan_approval,
+            final_approval_status=state.final_approval,
             repository=state.repository,
             difficulty=state.difficulty,
             mentor=state.mentor,
             plan=state.plan,
             consensus=state.consensus,
+            review_report=state.review_report,
             audit_events=state.audit.public_events(),
         )
