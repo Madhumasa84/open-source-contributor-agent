@@ -5,8 +5,9 @@ import { useState } from "react";
 import clsx from "clsx";
 import type { WorkflowPlanResponse } from "@/lib/types";
 import { runSecurityScan, runTests } from "@/lib/api";
+import ReactDiffViewer from "react-diff-viewer-continued";
 
-const tabs = ["Summary", "Files", "Onboarding", "Tests", "Security", "Audit"] as const;
+const tabs = ["Summary", "Files", "Onboarding", "Tests", "Security", "Audit", "Review"] as const;
 
 export function ReviewDashboard({
   result,
@@ -258,6 +259,40 @@ export function ReviewDashboard({
                 {JSON.stringify(event, null, 2)}
               </pre>
             ))}
+          </div>
+        )}
+
+        {activeTab === "Review" && (
+          <div className="space-y-4">
+            {result.patch_diff ? (
+              <div className="rounded-md border border-line bg-white overflow-hidden">
+                <div className="flex items-center justify-between bg-panel p-3 border-b border-line">
+                  <span className="font-semibold text-sm">Patch Diff</span>
+                  <div className="flex gap-2">
+                    {result.patch_iterations !== null && (
+                      <span className="bg-pine/10 text-pine px-2 py-0.5 rounded text-xs font-semibold">
+                        Solved in {result.patch_iterations} iterations
+                      </span>
+                    )}
+                    {result.patch_test_status && (
+                      <span className={clsx(
+                        "px-2 py-0.5 rounded text-xs font-semibold uppercase tracking-wider",
+                        result.patch_test_status === "passed" ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"
+                      )}>
+                        {result.patch_test_status}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div className="text-[10px]">
+                  <ReactDiffViewer oldValue="" newValue={result.patch_diff} splitView={false} />
+                </div>
+              </div>
+            ) : (
+              <div className="rounded-md border border-line bg-panel p-6 text-center text-sm text-ink/60">
+                No patch generated yet.
+              </div>
+            )}
           </div>
         )}
       </div>

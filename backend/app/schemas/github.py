@@ -5,6 +5,7 @@ from pydantic import AnyUrl, BaseModel
 
 class GitHubIssueRequest(BaseModel):
     issue_url: AnyUrl
+    preferred_language: str = "en"
 
 
 class GitHubIssueDetails(BaseModel):

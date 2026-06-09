@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import AsyncSessionLocal
 from app.models.workflow import WorkflowRun
 from app.schemas.workflow import ApprovalStatus, IssuePlanRequest, WorkflowPlanResponse
+from app.agents.patch_agent import PatchResult
 
 
 class WorkflowPersistenceService:
@@ -87,6 +88,30 @@ class WorkflowPersistenceService:
             return
         workflow.review_report = review_report.model_dump(mode="json")
         workflow.stage = stage
+
+    async def update_patch_result(
+        self,
+        workflow_id: str,
+        patch_result: PatchResult,
+    ) -> bool:
+        return await self._with_session(
+            self._update_patch_result,
+            workflow_id,
+            patch_result,
+        )
+
+    async def _update_patch_result(
+        self,
+        session: AsyncSession,
+        workflow_id: str,
+        patch_result: PatchResult,
+    ) -> None:
+        workflow = await session.get(WorkflowRun, workflow_id)
+        if not workflow:
+            return
+        workflow.patch_diff = patch_result.diff
+        workflow.patch_iterations = patch_result.iterations
+        workflow.patch_test_status = patch_result.final_test_status
 
     async def _with_session(self, operation, *args) -> bool:
         try:

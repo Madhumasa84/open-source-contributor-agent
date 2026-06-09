@@ -21,6 +21,7 @@ class ApprovalStatus(StrEnum):
 
 class WorkflowStage(StrEnum):
     created = "created"
+    triaged = "triaged"
     repository_analyzed = "repository_analyzed"
     plan_generated = "plan_generated"
     plan_approved = "plan_approved"
@@ -38,6 +39,7 @@ class IssuePlanRequest(BaseModel):
     issue_summary: str | None = None
     mode: Literal["learn", "auto_fix"] = "learn"
     providers: list[ProviderSelection] = Field(default_factory=list)
+    preferred_language: str = "en"
 
 
 class MentorExplanation(BaseModel):
@@ -94,6 +96,11 @@ class WorkflowPlanResponse(BaseModel):
     consensus: ConsensusReview | None = None
     review_report: ReviewReport | None = None
     audit_events: list[dict[str, Any]]
+    translation_warning: str | None = None
+    triage_data: dict[str, Any] | None = None
+    patch_diff: str | None = None
+    patch_iterations: int | None = None
+    patch_test_status: str | None = None
 
 
 class ApprovalRequest(BaseModel):

@@ -1,4 +1,10 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, BackgroundTasks, Query
+import uuid
+from pathlib import Path
+from sqlalchemy import select
+from app.core.database import AsyncSessionLocal
+from app.models.workflow import WorkflowRun
+from app.agents.patch_agent import PatchAgent
 
 from app.agents.workflow import OpenSourceContributorWorkflow, WorkflowState
 from app.schemas.review import PRDraft, PRDraftRequest
@@ -61,7 +67,17 @@ async def get_or_load_workflow(workflow_id: str) -> WorkflowState:
 @router.get("/{workflow_id}", response_model=WorkflowPlanResponse)
 async def get_workflow(workflow_id: str) -> WorkflowPlanResponse:
     state = await get_or_load_workflow(workflow_id)
-    return workflow_engine._response(state)
+    resp = workflow_engine._response(state)
+    
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(select(WorkflowRun).where(WorkflowRun.id == workflow_id))
+        run = result.scalar_one_or_none()
+        if run:
+            resp.triage_data = run.triage_data
+            resp.patch_diff = run.patch_diff
+            resp.patch_iterations = run.patch_iterations
+            resp.patch_test_status = run.patch_test_status
+    return resp
 
 
 @router.post("/{workflow_id}/approvals/plan", response_model=ApprovalResponse)
@@ -223,3 +239,71 @@ async def run_security_scan(workflow_id: str) -> WorkflowPlanResponse:
 
     await persistence.update_review_report(workflow_id, state.review_report, state.stage.value)
     return workflow_engine._response(state)
+
+async def run_patch_agent_task(workflow_id: str, state: WorkflowState):
+    executor = SafeToolExecutor(state.audit)
+    agent = PatchAgent(executor)
+    
+    fix_plan_dict = state.plan.model_dump(mode="json") if state.plan else {}
+    repo_path = Path(state.repository_path)
+    
+    result = await agent.run(workflow_id, fix_plan_dict, repo_path)
+    
+    await persistence.update_patch_result(workflow_id, result)
+
+
+@router.post("/{workflow_id}/patch", status_code=202)
+async def generate_patch(workflow_id: str, background_tasks: BackgroundTasks):
+    state = await get_or_load_workflow(workflow_id)
+    if state.plan_approval != ApprovalStatus.approved:
+        raise HTTPException(status_code=403, detail="Gate 1 (Plan) approval is required.")
+
+    if not state.repository_path:
+        raise HTTPException(status_code=400, detail="Repository path not set.")
+
+    patch_job_id = str(uuid.uuid4())
+    background_tasks.add_task(run_patch_agent_task, workflow_id, state)
+    return {"patch_job_id": patch_job_id, "status": "accepted"}
+
+@router.get("")
+async def get_workflows(
+    good_first_issue: bool | None = Query(None, description="Filter for good first issues"),
+    contributor_level: str | None = Query(None, description="Filter by beginner, intermediate, advanced"),
+    min_fixability: int | None = Query(None, description="Minimum fixability score 1-10"),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(20, gt=0, le=100),
+):
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(select(WorkflowRun))
+        runs = result.scalars().all()
+        
+        filtered = []
+        for r in runs:
+            td = r.triage_data or {}
+            
+            if good_first_issue is not None:
+                if td.get("good_first_issue") != good_first_issue:
+                    continue
+            
+            if contributor_level is not None:
+                if td.get("contributor_level") != contributor_level:
+                    continue
+                    
+            if min_fixability is not None:
+                if td.get("fixability_score", 0) < min_fixability:
+                    continue
+                    
+            filtered.append(r)
+            
+        filtered.sort(key=lambda x: (x.triage_data or {}).get("fixability_score", 0), reverse=True)
+        paginated = filtered[skip : skip + limit]
+        
+        return [
+            {
+                "id": w.id,
+                "issue_url": w.issue_url,
+                "stage": w.stage,
+                "triage_data": w.triage_data
+            }
+            for w in paginated
+        ]
