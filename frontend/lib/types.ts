@@ -59,6 +59,32 @@ export type RepositoryOverview = {
   contribution_difficulty: "Easy" | "Medium" | "Hard" | "Expert";
 };
 
+export type TriageData = {
+  difficulty_score: number;
+  fixability_score: number;
+  suggested_entry_points: string[];
+  good_first_issue: boolean;
+  contributor_level: "beginner" | "intermediate" | "advanced";
+  triage_reasoning: string;
+};
+
+export type SearchResult = {
+  file_path: string;
+  start_line: number;
+  end_line: number;
+  content: string;
+  score: number;
+};
+
+export type WorkflowListResult = {
+  id: string;
+  issue_url: string;
+  repository: Record<string, any>;
+  triage_data: TriageData | null;
+  status: string;
+  created_at: string;
+};
+
 export type WorkflowPlanResponse = {
   workflow_id: string;
   issue_url: string;
@@ -100,6 +126,10 @@ export type WorkflowPlanResponse = {
   } | null;
   review_report: ReviewReport | null;
   audit_events: Array<Record<string, unknown>>;
+  triage_data?: TriageData;
+  patch_diff?: string | null;
+  patch_iterations?: number | null;
+  patch_test_status?: string | null;
 };
 
 export type ReviewReport = {

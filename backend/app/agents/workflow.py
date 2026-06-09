@@ -40,6 +40,7 @@ class WorkflowState:
     consensus: ConsensusReview | None = None
     review_report: ReviewReport | None = None
     audit: AuditLogger = field(default_factory=AuditLogger)
+    translation_warning: str | None = None
 
 
 class OpenSourceContributorWorkflow:
@@ -88,6 +89,26 @@ class OpenSourceContributorWorkflow:
         state.difficulty = self.estimator.estimate(request.issue_summary, state.repository)
         state.mentor = self._mentor_explanation(request, state.repository)
         state.plan = self._deterministic_plan(request, state.repository, state.difficulty)
+        
+        pref_lang = getattr(request, "preferred_language", "en")
+        if pref_lang != "en":
+            from app.services.language_service import LanguageService
+            lang_svc = LanguageService(state.audit)
+            state.mentor.what_is_broken, w1 = await lang_svc.translate_prompt_output(state.mentor.what_is_broken, pref_lang, "mentor")
+            state.mentor.why_it_is_broken, w2 = await lang_svc.translate_prompt_output(state.mentor.why_it_is_broken, pref_lang, "mentor")
+            for i, sol in enumerate(state.mentor.possible_solutions):
+                state.mentor.possible_solutions[i], w3 = await lang_svc.translate_prompt_output(sol, pref_lang, "mentor")
+                
+            state.plan.summary, w4 = await lang_svc.translate_prompt_output(state.plan.summary, pref_lang, "plan")
+            state.plan.root_cause, w5 = await lang_svc.translate_prompt_output(state.plan.root_cause, pref_lang, "plan")
+            for i, step in enumerate(state.plan.proposed_steps):
+                state.plan.proposed_steps[i], w6 = await lang_svc.translate_prompt_output(step, pref_lang, "plan")
+            
+            # Combine warnings if any
+            warnings = [w for w in (w1, w2, w4, w5) if w]
+            if warnings:
+                state.translation_warning = warnings[0]
+
         state.consensus = self._consensus_stub(request)
         state.stage = WorkflowStage.plan_generated
         await state.audit.record(
@@ -221,4 +242,5 @@ class OpenSourceContributorWorkflow:
             consensus=state.consensus,
             review_report=state.review_report,
             audit_events=state.audit.public_events(),
+            translation_warning=state.translation_warning,
         )

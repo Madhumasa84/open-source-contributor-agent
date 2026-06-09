@@ -2,7 +2,7 @@ from app.schemas.repository import OnboardingGuide, RepositoryOverview
 
 
 class ContributorOnboardingService:
-    def generate(self, overview: RepositoryOverview) -> OnboardingGuide:
+    async def generate(self, overview: RepositoryOverview, preferred_language: str = "en") -> OnboardingGuide:
         build_instructions: list[str] = []
         if "npm" in overview.build_systems:
             build_instructions.extend(["npm install", "npm test", "npm run lint"])
@@ -30,7 +30,7 @@ class ContributorOnboardingService:
             "Pick issues labeled good first issue, docs, tests, or help wanted.",
         ]
 
-        return OnboardingGuide(
+        guide = OnboardingGuide(
             architecture_overview=overview.architecture,
             important_modules=important_modules,
             build_instructions=build_instructions,
@@ -50,3 +50,22 @@ class ContributorOnboardingService:
             ],
             learning_path=learning_path,
         )
+        
+        if preferred_language != "en":
+            from app.services.language_service import LanguageService
+            from app.services.audit import AuditLogger
+            lang_svc = LanguageService(AuditLogger())
+            
+            warning_out = None
+            
+            for i, item in enumerate(guide.development_workflow):
+                guide.development_workflow[i], w = await lang_svc.translate_prompt_output(item, preferred_language, "onboarding")
+                if w: warning_out = w
+                
+            for i, item in enumerate(guide.learning_path):
+                guide.learning_path[i], w = await lang_svc.translate_prompt_output(item, preferred_language, "onboarding")
+                if w: warning_out = w
+                
+            guide.translation_warning = warning_out
+            
+        return guide

@@ -1,6 +1,8 @@
 "use client";
 
-import { AlertCircle, Download, GitBranchPlus, Loader2, Play, RotateCcw } from "lucide-react";
+import { AlertCircle, Download, GitBranchPlus, Loader2, Play, RotateCcw, Search } from "lucide-react";
+import { TriageCard } from "@/components/TriageCard";
+import { SemanticSearchPanel } from "@/components/SemanticSearchPanel";
 import { useEffect, useMemo, useState } from "react";
 import { ApprovalGate } from "@/components/ApprovalGate";
 import { ProviderMatrix } from "@/components/ProviderMatrix";
@@ -51,11 +53,27 @@ const fallbackProviders: ProviderDescriptor[] = [
   }
 ];
 
+const LANGUAGES = [
+  { code: "auto", name: "Auto-detect", emoji: "🌐" },
+  { code: "en", name: "English", emoji: "🇬🇧" },
+  { code: "ta", name: "Tamil", emoji: "🇮🇳" },
+  { code: "hi", name: "Hindi", emoji: "🇮🇳" },
+  { code: "es", name: "Spanish", emoji: "🇪🇸" },
+  { code: "fr", name: "French", emoji: "🇫🇷" },
+  { code: "de", name: "German", emoji: "🇩🇪" },
+  { code: "ja", name: "Japanese", emoji: "🇯🇵" },
+  { code: "zh", name: "Mandarin", emoji: "🇨🇳" },
+  { code: "pt", name: "Portuguese", emoji: "🇵🇹" },
+  { code: "ar", name: "Arabic", emoji: "🇸🇦" }
+];
+
 export default function Home() {
   const [issueUrl, setIssueUrl] = useState("https://github.com/example/project/issues/1");
   const [repositoryPath, setRepositoryPath] = useState("");
   const [issueSummary, setIssueSummary] = useState("");
   const [issueDetails, setIssueDetails] = useState<GitHubIssueDetails | null>(null);
+  const [preferredLanguage, setPreferredLanguage] = useState("auto");
+  const [detectedLanguage, setDetectedLanguage] = useState<string | null>(null);
   const [cloneUrl, setCloneUrl] = useState("https://github.com/example/project");
   const [cloneTarget, setCloneTarget] = useState("");
   const [mode, setMode] = useState<"learn" | "auto_fix">("learn");
@@ -114,7 +132,8 @@ export default function Home() {
         repositoryPath,
         issueSummary,
         mode,
-        providers: selections
+        providers: selections,
+        preferredLanguage
       });
       setResult(response);
       setCloneResult(null);
@@ -135,9 +154,14 @@ export default function Home() {
     setIssueLoading(true);
     setError(null);
     try {
-      const response = await fetchGitHubIssue(issueUrl);
-      setIssueDetails(response);
-      setIssueSummary((current) => (current.trim() ? current : buildIssueSummary(response)));
+      const response = await fetchGitHubIssue(issueUrl, preferredLanguage);
+      setIssueDetails(response.issue);
+      setIssueSummary((current) => (current.trim() ? current : buildIssueSummary(response.issue)));
+      setDetectedLanguage(response.detected_language);
+      if (response.translation_warning) {
+        // Just log or could display if we had a toast
+        console.warn(response.translation_warning);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Issue request failed");
     } finally {
@@ -202,7 +226,11 @@ export default function Home() {
         <div className="flex h-14 items-center justify-between border-b border-line bg-white px-5">
           <div className="min-w-0">
             <h1 className="truncate text-base font-semibold">Open Source Contributor Agent</h1>
-            <p className="truncate text-xs text-ink/60">{selectedModels || "No consensus models selected"}</p>
+            <div className="flex items-center gap-3 mt-0.5">
+              <p className="truncate text-xs text-ink/60">{selectedModels || "No consensus models selected"}</p>
+              <span className="text-ink/30 text-xs">|</span>
+              <a href="/workflows" className="text-xs text-pine hover:underline font-medium">Browse Workflows</a>
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -235,7 +263,7 @@ export default function Home() {
         <div className="scrollbar-thin p-4 sm:p-5 xl:h-[calc(100vh-3.5rem)] xl:overflow-auto">
           <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_18rem]">
             <section className="rounded-md border border-line bg-white p-4">
-              <div className="grid gap-3 lg:grid-cols-2">
+              <div className="grid gap-3 lg:grid-cols-3">
                 <label className="block">
                   <div className="mb-1 flex items-center justify-between gap-2">
                     <span className="block text-xs font-semibold uppercase text-ink/50">Issue URL</span>
@@ -280,6 +308,20 @@ export default function Home() {
                     placeholder="project"
                     className="h-10 w-full rounded-md border border-line bg-panel px-3 text-sm"
                   />
+                </label>
+                <label className="block">
+                  <span className="mb-1 block text-xs font-semibold uppercase text-ink/50">Language {detectedLanguage && `(Source: ${detectedLanguage})`}</span>
+                  <select
+                    value={preferredLanguage}
+                    onChange={(event) => setPreferredLanguage(event.target.value)}
+                    className="h-10 w-full rounded-md border border-line bg-panel px-3 text-sm"
+                  >
+                    {LANGUAGES.map((lang) => (
+                      <option key={lang.code} value={lang.code}>
+                        {lang.emoji} {lang.name}
+                      </option>
+                    ))}
+                  </select>
                 </label>
               </div>
               <label className="mt-3 block">
@@ -413,6 +455,18 @@ export default function Home() {
                 <Metric label="Frameworks" value={result.repository.frameworks.join(", ") || "None"} />
                 <Metric label="Files" value={String(result.repository.code_quality_metrics.file_count ?? "0")} />
               </div>
+            </section>
+          )}
+
+          {result?.triage_data && (
+            <section className="mt-5">
+              <TriageCard data={result.triage_data} />
+            </section>
+          )}
+
+          {result?.workflow_id && (
+            <section className="mt-5">
+              <SemanticSearchPanel workflowId={result.workflow_id} />
             </section>
           )}
         </div>

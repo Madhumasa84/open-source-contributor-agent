@@ -21,6 +21,7 @@ class RiskLevel(StrEnum):
 
 class RepositoryAnalyzeRequest(BaseModel):
     path: Path
+    preferred_language: str = "en"
 
 
 class RepositoryFileRequest(BaseModel):
@@ -80,6 +81,7 @@ class OnboardingGuide(BaseModel):
     development_workflow: list[str]
     good_first_issue_signals: list[str]
     learning_path: list[str]
+    translation_warning: str | None = None
 
 
 class GraphNode(BaseModel):

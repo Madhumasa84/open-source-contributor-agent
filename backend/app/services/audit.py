@@ -74,9 +74,17 @@ class MemoryAuditSink:
         self.records.append(record)
 
 
+class DefaultDatabaseAuditSink:
+    async def record(self, record: AuditRecord) -> None:
+        from app.core.database import AsyncSessionLocal
+        async with AsyncSessionLocal() as session:
+            session.add(record.to_event())
+            await session.commit()
+
+
 class AuditLogger:
     def __init__(self, sink: AuditSink | None = None) -> None:
-        self.sink = sink or MemoryAuditSink()
+        self.sink = sink or DefaultDatabaseAuditSink()
 
     async def record(self, record: AuditRecord) -> None:
         await self.sink.record(record)
