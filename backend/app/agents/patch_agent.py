@@ -82,6 +82,16 @@ class PatchAgent:
 
             if final_test_status == "passed":
                 break
+                
+        # 5. Doc Drift Detection
+        if diff and files_to_change:
+            from app.services.doc_drift import DocDriftDetector
+            import asyncio
+            # Assume repo URL can be extracted or passed. Here we use a generic placeholder
+            # that bot can parse or fail safely.
+            # In a real setup, workflow object would pass repo_url. 
+            drift_detector = DocDriftDetector(self.executor.audit)
+            asyncio.create_task(drift_detector.detect_and_report("https://github.com/placeholder/repo", diff, files_to_change))
 
         return PatchResult(
             diff=diff,
