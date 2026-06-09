@@ -113,6 +113,8 @@ ANTHROPIC_API_KEY=
 OPENROUTER_API_KEY=
 OLLAMA_BASE_URL=http://localhost:11434
 GITHUB_TOKEN=
+OSCA_USE_DOCKER_SANDBOX=true     # default false
+DOCKER_SOCKET_PATH=              # default /var/run/docker.sock
 ```
 
 The dashboard works without remote API keys. Ollama is treated as local-capable when a base URL is configured.
@@ -123,6 +125,12 @@ The dashboard works without remote API keys. Ollama is treated as local-capable 
 - Gate 2: Human approves the review report before branch, commit, or PR actions.
 
 All file and terminal tools are scoped to `OSCA_WORKSPACE_ROOT`. Each action records an audit event with actor, status, inputs, and outputs. Repository clone requests require an explicit `approved_by` actor and only allow HTTPS GitHub URLs.
+
+## New in v2
+| Variable | Default | Description |
+|---|---|---|
+| `OSCA_USE_DOCKER_SANDBOX` | `false` | Enable ephemeral Docker containers for test execution |
+| `DOCKER_SOCKET_PATH` | `/var/run/docker.sock` | Docker socket path |
 
 ## API Endpoints
 
@@ -147,9 +155,13 @@ All file and terminal tools are scoped to `OSCA_WORKSPACE_ROOT`. Each action rec
 
 ## Roadmap
 
-1. Add draft PR creation through a final approval gate.
-2. Expand repository knowledge graph and architecture visualization.
-3. Advanced telemetry integration and performance tracking.
+1. Draft PR creation through final approval gate.
+2. Multi-model consensus voting — run plans across models, flag disagreements for human review.
+3. Repository knowledge graph and architecture visualization.
+4. Contributor profiles and contribution history across projects.
+5. IDE integration (VS Code extension / MCP server).
+6. GitHub App for maintainers — auto-label issues, pre-screen PRs.
+7. Advanced telemetry and success-rate tracking (which fix plans got merged).
 
 ## Contributing
 
