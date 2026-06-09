@@ -63,8 +63,54 @@ async def fetch_issue(request: GitHubIssueRequest) -> GitHubIssueTriageResponse:
             session.add(workflow)
             await session.commit()
             
-        # Extract translation_warning if it was attached to TriageResult implicitly, or if we translate something here. Wait, triage_res will contain the warning if we translate there.
-        # But for now, let's just pass whatever we have.
+        # Background or inline actions
+        from app.services.issue_indexer import IssueIndexer
+        from app.services.github_bot import GitHubBot
+        import asyncio
+        
+        indexer = IssueIndexer(AuditLogger())
+        bot = GitHubBot(AuditLogger())
+        
+        async def post_triage_actions():
+            # Check for duplicates
+            duplicates = await indexer.find_duplicates(str(request.issue_url), issue.title, issue.body)
+            if duplicates:
+                dup = duplicates[0]
+                await bot.post_comment(str(request.issue_url), f"This may be related to {dup['issue_url']} and could be a duplicate.")
+            else:
+                await indexer.index_issue(str(request.issue_url), issue.title, issue.body)
+            
+            # Apply labels
+            labels = ["osca-triaged"]
+            if triage_res.good_first_issue:
+                labels.append("good-first-issue")
+            if any("bug" in l.lower() for l in issue.labels):
+                labels.append("bug")
+            elif any("enhancement" in l.lower() for l in issue.labels):
+                labels.append("enhancement")
+            
+            if triage_res.fixability_score < 4:
+                labels.append("needs-reproduction")
+            if triage_res.difficulty_score >= 8:
+                labels.append("difficulty:hard")
+                
+            await bot.apply_labels(str(request.issue_url), list(set(labels)))
+            
+            # Post triage comment
+            comment_body = (
+                f"🤖 **OSCA Triage Complete**\n"
+                f"- **Difficulty Score:** {triage_res.difficulty_score}/10\n"
+                f"- **Fixability Score:** {triage_res.fixability_score}/10\n"
+                f"- **Contributor Level:** {triage_res.contributor_level.capitalize()}\n"
+                f"- **Entry Points:** {', '.join(triage_res.suggested_entry_points) if triage_res.suggested_entry_points else 'None suggested'}\n\n"
+                f"[Click here to open this in OSCA](http://localhost:3010/workflows/{workflow_id})"
+            )
+            await bot.post_comment(str(request.issue_url), comment_body)
+            
+        # Fire and forget (or await directly if we want to block)
+        asyncio.create_task(post_triage_actions())
+
+        # Extract translation_warning if it was attached to TriageResult implicitly
         warning = getattr(triage_res, "translation_warning", None)
             
         return GitHubIssueTriageResponse(

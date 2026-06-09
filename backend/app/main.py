@@ -36,6 +36,8 @@ def create_app() -> FastAPI:
     app.include_router(repositories.router, prefix="/api")
     app.include_router(workflows.router, prefix="/api")
     app.include_router(github.router, prefix="/api")
+    from app.api.routes import pr_checks
+    app.include_router(pr_checks.router, prefix="/api")
     return app
 
 

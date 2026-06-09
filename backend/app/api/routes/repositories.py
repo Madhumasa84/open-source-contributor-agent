@@ -109,3 +109,36 @@ async def sandbox_run(request: SandboxRunRequest):
         sandbox = DockerSandbox(state.audit)
         result = await sandbox.run(Path(state.repository_path), request.command, request.timeout_seconds)
         return result
+
+class RepoHealthResponse(BaseModel):
+    open_issue_count: int
+    difficulty_breakdown: dict[str, int]
+    contributor_funnel: dict[str, int]
+    test_coverage_trend: float
+    stale_issue_count: int
+
+@router.get("/{owner}/{repo}/health", response_model=RepoHealthResponse)
+async def repo_health(owner: str, repo: str) -> RepoHealthResponse:
+    # MVP simulated response. In production, this queries DB/GitHub API
+    return RepoHealthResponse(
+        open_issue_count=42,
+        difficulty_breakdown={"low": 10, "medium": 20, "hard": 12},
+        contributor_funnel={"opened": 42, "cloned": 15, "pr": 8, "merged": 3},
+        test_coverage_trend=85.5,
+        stale_issue_count=5
+    )
+
+class ContributorStats(BaseModel):
+    username: str
+    patches_merged: int
+    issues_resolved: int
+    review_score: float
+
+@router.get("/{owner}/{repo}/leaderboard", response_model=list[ContributorStats])
+async def repo_leaderboard(owner: str, repo: str) -> list[ContributorStats]:
+    # MVP simulated response.
+    return [
+        ContributorStats(username="alice_dev", patches_merged=15, issues_resolved=12, review_score=4.9),
+        ContributorStats(username="bob_coder", patches_merged=8, issues_resolved=9, review_score=4.5),
+        ContributorStats(username="charlie_hacks", patches_merged=3, issues_resolved=3, review_score=4.1),
+    ]
