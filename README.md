@@ -162,6 +162,14 @@ All file and terminal tools are scoped to `OSCA_WORKSPACE_ROOT`. Each action rec
 5. IDE integration (VS Code extension / MCP server).
 6. GitHub App for maintainers — auto-label issues, pre-screen PRs.
 7. Advanced telemetry and success-rate tracking (which fix plans got merged).
+8. **🏷 Auto Issue Labeler**: After triage, auto-apply GitHub labels (e.g. good-first-issue, difficulty:hard) via the API to provide maintainers a fully labeled backlog.
+9. **🔁 Duplicate Issue Detector**: Embed new issues and compare against open issues (using CodeIndexer). If similarity > 0.85, suggest closing the duplicate.
+10. **📋 PR Pre-Check Bot**: Contributors run OSCA locally before submitting PRs to check tests, secrets, diff plan matching, and style conventions.
+11. **📊 Repo Health Dashboard**: Public URL per repo showing open issue counts by difficulty, contributor funnel, test coverage trends, and stale issue metrics.
+12. **💬 Issue Comment Bot**: On triage, auto-post a structured comment with difficulty score, suggested entry points, and an OSCA deep link.
+13. **📚 Doc Drift Detector**: Diff changed functions against their docstrings and README. Open follow-up doc-fix issues if divergence is detected.
+14. **🎖 Contributor Leaderboard**: Public leaderboard highlighting top contributors by patches merged, issues resolved, and review quality score.
+15. **⏱ Stale Issue Closer**: Auto-comment and close issues inactive for 90 days with low fixability scores to reduce backlog noise.
 
 ## Contributing
 
