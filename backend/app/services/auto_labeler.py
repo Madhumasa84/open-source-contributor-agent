@@ -1,8 +1,9 @@
 import logging
+
+from app.core.config import get_settings
+from app.schemas.repository import DifficultyEstimate, DifficultyLevel
 from app.services.audit import AuditLogger, AuditRecord
 from app.services.github_bot import GitHubBot
-from app.schemas.repository import DifficultyEstimate, DifficultyLevel
-from app.core.config import get_settings
 
 logger = logging.getLogger(__name__)
 

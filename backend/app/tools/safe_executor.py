@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
@@ -33,9 +34,17 @@ class SafeToolExecutor:
         candidate = Path(path).expanduser()
         if not candidate.is_absolute():
             candidate = self.workspace_root / candidate
-        resolved = candidate.resolve()
-        if resolved != self.workspace_root and self.workspace_root not in resolved.parents:
+
+        # 1. Lexical validation to prevent path traversal via ".." before symlink resolution
+        normalized = Path(os.path.normpath(candidate))
+        if not normalized.is_relative_to(self.workspace_root):
+            raise PermissionDeniedError(f"path lexically escapes workspace root: {normalized}")
+
+        # 2. Symlink resolution and physical validation
+        resolved = normalized.resolve()
+        if not resolved.is_relative_to(self.workspace_root):
             raise PermissionDeniedError(f"path is outside workspace root: {resolved}")
+
         return resolved
 
     async def read_file(self, path: str | Path) -> str:

@@ -1,9 +1,11 @@
 import asyncio
-import httpx
 import logging
-from datetime import datetime, timedelta, timezone
-from app.services.github_bot import GitHubBot
+from datetime import UTC, datetime, timedelta
+
+import httpx
+
 from app.services.audit import AuditLogger
+from app.services.github_bot import GitHubBot
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -15,7 +17,7 @@ async def close_stale_issues(owner: str, repo: str, days: int = 90):
         logger.error("No GITHUB_TOKEN set.")
         return
 
-    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+    cutoff = datetime.now(UTC) - timedelta(days=days)
     cutoff_str = cutoff.isoformat()
     
     # Simple query for open issues updated before cutoff

@@ -61,7 +61,7 @@ class CodeIndexer:
         ignore_spec = None
         gitignore_path = repo_path / '.gitignore'
         if gitignore_path.exists():
-            with open(gitignore_path, 'r', encoding='utf-8') as f:
+            with open(gitignore_path, encoding='utf-8') as f:
                 ignore_spec = pathspec.PathSpec.from_lines(pathspec.patterns.GitWildMatchPattern, f)
 
         files_indexed = 0

@@ -5,6 +5,7 @@ from uuid import uuid4
 
 from app.ai.providers.registry import ProviderRegistry
 from app.schemas.repository import DifficultyEstimate, RepositoryOverview
+from app.schemas.review import ReviewReport
 from app.schemas.workflow import (
     ApprovalStatus,
     ConsensusReview,
@@ -14,7 +15,6 @@ from app.schemas.workflow import (
     WorkflowPlanResponse,
     WorkflowStage,
 )
-from app.schemas.review import ReviewReport
 from app.services.audit import AuditLogger, AuditRecord
 from app.services.difficulty import DifficultyEstimator
 from app.services.repository_analyzer import RepositoryAnalyzer

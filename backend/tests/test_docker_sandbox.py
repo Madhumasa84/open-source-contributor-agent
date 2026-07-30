@@ -1,10 +1,9 @@
-import pytest
-import asyncio
-from pathlib import Path
 
-from app.tools.docker_sandbox import DockerSandbox
+import pytest
+
 from app.services.audit import AuditLogger, MemoryAuditSink
-from app.core.config import Settings
+from app.tools.docker_sandbox import DockerSandbox
+
 
 @pytest.mark.asyncio
 async def test_docker_sandbox_network_isolated(tmp_path):

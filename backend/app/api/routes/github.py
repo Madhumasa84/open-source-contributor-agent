@@ -1,15 +1,16 @@
-from fastapi import APIRouter, HTTPException
 import uuid
+
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
+from app.core.database import AsyncSessionLocal
+from app.models.workflow import WorkflowRun
 from app.schemas.github import GitHubIssueDetails, GitHubIssueRequest
+from app.schemas.repository import DifficultyLevel, RepositoryOverview
+from app.services.audit import AuditLogger
 from app.services.github_issues import GitHubIssueError, GitHubIssueService
 from app.services.issue_triager import IssueTriager, TriageResult
-from app.services.audit import AuditLogger
 from app.services.language_service import LanguageService
-from app.schemas.repository import RepositoryOverview, DifficultyLevel
-from app.models.workflow import WorkflowRun
-from app.core.database import AsyncSessionLocal
 
 router = APIRouter(prefix="/github", tags=["github"])
 
@@ -64,9 +65,10 @@ async def fetch_issue(request: GitHubIssueRequest) -> GitHubIssueTriageResponse:
             await session.commit()
             
         # Background or inline actions
-        from app.services.issue_indexer import IssueIndexer
-        from app.services.github_bot import GitHubBot
         import asyncio
+
+        from app.services.github_bot import GitHubBot
+        from app.services.issue_indexer import IssueIndexer
         
         indexer = IssueIndexer(AuditLogger())
         bot = GitHubBot(AuditLogger())

@@ -1,9 +1,10 @@
-import pytest
-import json
-from unittest.mock import AsyncMock, patch, MagicMock
+from unittest.mock import MagicMock
 
-from app.services.duplicate_detector import DuplicateIssueDetector
+import pytest
+
 from app.services.audit import AuditLogger, MemoryAuditSink
+from app.services.duplicate_detector import DuplicateIssueDetector
+
 
 @pytest.fixture
 def memory_audit():

@@ -52,8 +52,8 @@ class ContributorOnboardingService:
         )
         
         if preferred_language != "en":
-            from app.services.language_service import LanguageService
             from app.services.audit import AuditLogger
+            from app.services.language_service import LanguageService
             lang_svc = LanguageService(AuditLogger())
             
             warning_out = None

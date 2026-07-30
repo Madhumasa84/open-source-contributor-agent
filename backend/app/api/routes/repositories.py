@@ -1,9 +1,11 @@
-from fastapi import APIRouter, HTTPException
-import uuid
-from pydantic import BaseModel
 import asyncio
+import uuid
 from pathlib import Path
 
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
+
+from app.api.routes.workflows import get_or_load_workflow
 from app.schemas.repository import (
     ImpactAnalysis,
     OnboardingGuide,
@@ -15,16 +17,15 @@ from app.schemas.repository import (
     TestPlan,
 )
 from app.services.audit import AuditLogger
+from app.services.code_indexer import CodeIndexer
 from app.services.impact import ImpactAnalyzer
 from app.services.onboarding import ContributorOnboardingService
 from app.services.repository_analyzer import RepositoryAnalyzer
 from app.services.security import SecurityReviewer
 from app.services.test_runner import TestExecutionEngine
 from app.services.visualization import RepositoryVisualizationService
-from app.tools.safe_executor import SafeToolExecutor
-from app.services.code_indexer import CodeIndexer
 from app.tools.docker_sandbox import DockerSandbox, SandboxResult
-from app.api.routes.workflows import get_or_load_workflow
+from app.tools.safe_executor import SafeToolExecutor
 
 router = APIRouter(prefix="/repositories", tags=["repositories"])
 

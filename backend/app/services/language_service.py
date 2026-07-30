@@ -1,8 +1,10 @@
 import logging
+
 from langdetect import detect as langdetect_detect
-from app.services.audit import AuditLogger, AuditRecord
+
 from app.ai.providers.registry import ProviderRegistry
-from app.schemas.provider import ModelRequest, ChatMessage
+from app.schemas.provider import ChatMessage, ModelRequest
+from app.services.audit import AuditLogger, AuditRecord
 
 logger = logging.getLogger(__name__)
 

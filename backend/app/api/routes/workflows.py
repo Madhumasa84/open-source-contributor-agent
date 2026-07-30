@@ -1,12 +1,13 @@
-from fastapi import APIRouter, HTTPException, BackgroundTasks, Query
 import uuid
 from pathlib import Path
+
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
 from sqlalchemy import select
+
+from app.agents.patch_agent import PatchAgent
+from app.agents.workflow import OpenSourceContributorWorkflow, WorkflowState
 from app.core.database import AsyncSessionLocal
 from app.models.workflow import WorkflowRun
-from app.agents.patch_agent import PatchAgent
-
-from app.agents.workflow import OpenSourceContributorWorkflow, WorkflowState
 from app.schemas.review import PRDraft, PRDraftRequest
 from app.schemas.workflow import (
     ApprovalRequest,
@@ -15,17 +16,17 @@ from app.schemas.workflow import (
     CloneRepositoryRequest,
     CloneRepositoryResponse,
     IssuePlanRequest,
+    ReviewReport,
     WorkflowPlanResponse,
     WorkflowStage,
-    ReviewReport,
 )
+from app.services.audit import AuditRecord
 from app.services.pr_draft import PRDraftGenerator
 from app.services.repository_clone import RepositoryCloneError, RepositoryCloneService
-from app.services.workflow_persistence import WorkflowPersistenceService
-from app.services.test_runner import TestExecutionEngine
 from app.services.security import SecurityReviewer
+from app.services.test_runner import TestExecutionEngine
+from app.services.workflow_persistence import WorkflowPersistenceService
 from app.tools.safe_executor import SafeToolExecutor
-from app.services.audit import AuditLogger, AuditRecord
 
 router = APIRouter(prefix="/workflows", tags=["workflows"])
 workflow_engine = OpenSourceContributorWorkflow()
@@ -189,12 +190,12 @@ async def run_tests(workflow_id: str) -> WorkflowPlanResponse:
             issue_summary=state.plan.summary,
             root_cause=state.plan.root_cause,
             files_changed=state.plan.files_likely_changed,
-            tests_run=[f" ".join(r.command) for r in results],
+            tests_run=[" ".join(r.command) for r in results],
             risk_assessment=state.plan.risks,
             reasoning=["Tests executed by human operator request."],
         )
     else:
-        state.review_report.tests_run = [f" ".join(r.command) for r in results]
+        state.review_report.tests_run = [" ".join(r.command) for r in results]
 
     state.stage = WorkflowStage.tests_completed
 
@@ -203,7 +204,7 @@ async def run_tests(workflow_id: str) -> WorkflowPlanResponse:
             action="tests.run",
             actor="human",
             status="completed" if all_success else "failed",
-            input_summary=",".join([f" ".join(r.command) for r in results]),
+            input_summary=",".join([" ".join(r.command) for r in results]),
             output_summary=f"Success: {all_success}",
             metadata={"workflow_id": workflow_id},
         )

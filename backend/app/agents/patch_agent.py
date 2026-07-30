@@ -5,9 +5,9 @@ from pathlib import Path
 from pydantic import BaseModel
 
 from app.services.audit import AuditRecord
+from app.services.code_indexer import CodeIndexer
 from app.services.test_runner import TestRunnerService
 from app.tools.safe_executor import SafeToolExecutor
-from app.services.code_indexer import CodeIndexer
 
 
 class PatchResult(BaseModel):
@@ -85,8 +85,9 @@ class PatchAgent:
                 
         # 5. Doc Drift Detection
         if diff and files_to_change:
-            from app.services.doc_drift import DocDriftDetector
             import asyncio
+
+            from app.services.doc_drift import DocDriftDetector
             # Assume repo URL can be extracted or passed. Here we use a generic placeholder
             # that bot can parse or fail safely.
             # In a real setup, workflow object would pass repo_url. 

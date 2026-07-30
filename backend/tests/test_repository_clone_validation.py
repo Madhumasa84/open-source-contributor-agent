@@ -1,8 +1,9 @@
 import pytest
 
-from app.services.repository_clone import RepositoryCloneService, RepositoryCloneError
-from app.tools.safe_executor import SafeToolExecutor
 from app.services.audit import AuditLogger, MemoryAuditSink
+from app.services.repository_clone import RepositoryCloneError, RepositoryCloneService
+from app.tools.safe_executor import SafeToolExecutor
+
 
 def test_clone_service_validates_target_urls():
     executor = SafeToolExecutor(AuditLogger(sink=MemoryAuditSink()))

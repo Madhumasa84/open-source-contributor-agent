@@ -1,8 +1,9 @@
-import os
-import time
 import asyncio
 import logging
+import os
+import time
 from pathlib import Path
+
 from pydantic import BaseModel
 
 from app.core.config import get_settings
@@ -87,7 +88,6 @@ class DockerSandbox:
                 audit_event_id=None
             )
             
-        import docker
         image = "python:3.11-slim"
         if (rp / "package.json").exists():
             image = "node:20-slim"

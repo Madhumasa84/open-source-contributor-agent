@@ -1,10 +1,11 @@
-import logging
-import uuid
 import json
+import logging
+
 from sqlalchemy import text
+
+from app.core.database import AsyncSessionLocal
 from app.services.audit import AuditLogger, AuditRecord
 from app.services.code_indexer import CodeIndexer
-from app.core.database import AsyncSessionLocal
 
 logger = logging.getLogger(__name__)
 

@@ -19,7 +19,7 @@ def check_postgres_connection(url: str) -> bool:
         port = parsed.port or 5432
         with socket.create_connection((host, port), timeout=1.0):
             return True
-    except (socket.error, ValueError):
+    except (OSError, ValueError):
         return False
 
 
@@ -39,8 +39,6 @@ async def get_session() -> AsyncGenerator[AsyncSession, None]:
 
 
 async def init_db() -> None:
-    from app.models.workflow import WorkflowRun, RepositoryCloneJob
-    from app.models.audit import AuditEvent
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)

@@ -1,6 +1,7 @@
 import logging
-from app.services.github_bot import GitHubBot
+
 from app.services.audit import AuditLogger, AuditRecord
+from app.services.github_bot import GitHubBot
 
 logger = logging.getLogger(__name__)
 

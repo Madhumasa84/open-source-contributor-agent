@@ -1,12 +1,13 @@
 import hashlib
 from typing import Literal
+
 from pydantic import BaseModel
 
+from app.ai.providers.registry import ProviderRegistry
 from app.schemas.github import GitHubIssueDetails
+from app.schemas.provider import ChatMessage, ModelRequest
 from app.schemas.repository import RepositoryOverview
 from app.services.audit import AuditLogger, AuditRecord
-from app.ai.providers.registry import ProviderRegistry
-from app.schemas.provider import ModelRequest, ChatMessage
 
 # Aliases to match exact names requested by prompt
 GitHubIssue = GitHubIssueDetails

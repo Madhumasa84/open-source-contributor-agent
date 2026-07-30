@@ -6,9 +6,9 @@ from pydantic import AnyUrl, BaseModel, Field
 from app.schemas.provider import ProviderSelection
 from app.schemas.repository import (
     DifficultyEstimate,
+    ImpactAnalysis,
     RepositoryOverview,
     SecurityReview,
-    ImpactAnalysis,
 )
 
 

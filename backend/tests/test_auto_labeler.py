@@ -1,9 +1,11 @@
-import pytest
 from unittest.mock import AsyncMock, patch
 
-from app.services.auto_labeler import AutoIssueLabeler
-from app.services.audit import AuditLogger, MemoryAuditSink
+import pytest
+
 from app.schemas.repository import DifficultyEstimate, DifficultyLevel
+from app.services.audit import AuditLogger, MemoryAuditSink
+from app.services.auto_labeler import AutoIssueLabeler
+
 
 @pytest.fixture
 def memory_audit():

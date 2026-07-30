@@ -1,4 +1,5 @@
 import pytest
+
 from app.schemas.repository import DifficultyLevel, RepositoryOverview
 from app.schemas.workflow import FixPlan
 from app.services.onboarding import ContributorOnboardingService

@@ -3,10 +3,10 @@ from __future__ import annotations
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.agents.patch_agent import PatchResult
 from app.core.database import AsyncSessionLocal
 from app.models.workflow import WorkflowRun
 from app.schemas.workflow import ApprovalStatus, IssuePlanRequest, WorkflowPlanResponse
-from app.agents.patch_agent import PatchResult
 
 
 class WorkflowPersistenceService:
@@ -165,9 +165,15 @@ class WorkflowPersistenceService:
 
     async def get_workflow(self, workflow_id: str):
         from app.agents.workflow import WorkflowState
-        from app.schemas.workflow import WorkflowStage, ApprovalStatus, ReviewReport
-        from app.schemas.repository import RepositoryOverview, DifficultyEstimate
-        from app.schemas.workflow import MentorExplanation, FixPlan, ConsensusReview
+        from app.schemas.repository import DifficultyEstimate, RepositoryOverview
+        from app.schemas.workflow import (
+            ApprovalStatus,
+            ConsensusReview,
+            FixPlan,
+            MentorExplanation,
+            ReviewReport,
+            WorkflowStage,
+        )
         from app.services.audit import AuditLogger, AuditRecord, MemoryAuditSink
 
         async with AsyncSessionLocal() as session:

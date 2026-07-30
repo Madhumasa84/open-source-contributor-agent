@@ -1,7 +1,9 @@
 import json
-import uuid
 import logging
+import uuid
+
 from sqlalchemy import text
+
 from app.core.database import AsyncSessionLocal
 from app.services.audit import AuditLogger, AuditRecord
 from app.services.code_indexer import CodeIndexer

@@ -2,7 +2,7 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
 
-from sqlalchemy import DateTime, String, Text, JSON, UUID
+from sqlalchemy import JSON, UUID, DateTime, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base

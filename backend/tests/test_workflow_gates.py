@@ -1,12 +1,11 @@
 import pytest
-
 from fastapi.testclient import TestClient
-from app.main import app
-from app.api.routes.workflows import workflow_store
 
 from app.agents.workflow import ApprovalRequiredError, OpenSourceContributorWorkflow, WorkflowState
-from app.services.audit import AuditLogger, MemoryAuditSink
+from app.api.routes.workflows import workflow_store
+from app.main import app
 from app.schemas.workflow import ApprovalStatus
+from app.services.audit import AuditLogger, MemoryAuditSink
 
 
 @pytest.mark.asyncio
