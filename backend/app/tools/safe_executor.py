@@ -104,6 +104,18 @@ class SafeToolExecutor:
                 stdout_bytes, stderr_bytes = await process.communicate()
 
             exit_code = process.returncode if process.returncode is not None else 124
+        except Exception as e:
+            await self.audit.record(
+                AuditRecord(
+                    action="tool.terminal.finish",
+                    actor=approved_by or "system",
+                    approval_id=approved_by,
+                    status="failed",
+                    output_summary="Internal executor failure",
+                    metadata={"error": str(e)},
+                )
+            )
+            raise e
         except NotImplementedError:
             # Windows event loop fallback for environments without subprocess support.
             timed_out, stdout_bytes, stderr_bytes, exit_code = await asyncio.to_thread(

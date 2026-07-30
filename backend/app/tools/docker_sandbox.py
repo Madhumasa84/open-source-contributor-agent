@@ -150,7 +150,7 @@ class DockerSandbox:
         audit_rec = AuditRecord(
             action="docker_sandbox",
             actor="docker_sandbox",
-            status="completed",
+            status="completed" if exit_code != 125 else "failed",
             input_summary=command,
             output_summary=f"Exit: {exit_code}",
             metadata={"duration_ms": duration_ms, "image": image, "limits": "512m, 0.5cpu"}

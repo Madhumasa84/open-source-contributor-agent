@@ -1,3 +1,4 @@
+import pytest
 from app.schemas.repository import DifficultyLevel, RepositoryOverview
 from app.schemas.workflow import FixPlan
 from app.services.onboarding import ContributorOnboardingService
@@ -22,8 +23,9 @@ def make_overview() -> RepositoryOverview:
     )
 
 
-def test_onboarding_generates_build_and_learning_path():
-    guide = ContributorOnboardingService().generate(make_overview())
+@pytest.mark.asyncio
+async def test_onboarding_generates_build_and_learning_path():
+    guide = await ContributorOnboardingService().generate(make_overview())
 
     assert "pytest" in guide.build_instructions
     assert "app/main.py" in guide.important_modules
