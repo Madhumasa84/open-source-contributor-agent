@@ -9,13 +9,6 @@ class GitHubBot:
     def __init__(self, audit_logger: AuditLogger):
         self.settings = get_settings()
         self.audit = audit_logger
-        self.token = self.settings.github_token
-        self.headers = {
-            "Accept": "application/vnd.github.v3+json",
-            "User-Agent": "OSCA-Bot"
-        }
-        if self.token:
-            self.headers["Authorization"] = f"Bearer {self.token}"
 
     def _parse_issue_url(self, url: str) -> tuple[str, str, str]:
         # e.g. https://github.com/expressjs/express/issues/5747
@@ -26,16 +19,23 @@ class GitHubBot:
         return owner, repo, issue_number
 
     async def apply_labels(self, issue_url: str, labels: list[str]):
-        if not self.token:
+        token = self.settings.github_token
+        if not token:
             logger.warning("No GITHUB_TOKEN set. Cannot apply labels.")
             return
+
+        headers = {
+            "Accept": "application/vnd.github.v3+json",
+            "User-Agent": "OSCA-Bot",
+            "Authorization": f"Bearer {token}"
+        }
 
         try:
             owner, repo, issue_number = self._parse_issue_url(issue_url)
             api_url = f"https://api.github.com/repos/{owner}/{repo}/issues/{issue_number}/labels"
             
             async with httpx.AsyncClient() as client:
-                res = await client.post(api_url, headers=self.headers, json={"labels": labels})
+                res = await client.post(api_url, headers=headers, json={"labels": labels})
                 res.raise_for_status()
 
             await self.audit.record(AuditRecord(
@@ -50,16 +50,23 @@ class GitHubBot:
             logger.error(f"Failed to apply labels to {issue_url}: {e}")
 
     async def post_comment(self, issue_url: str, body: str):
-        if not self.token:
+        token = self.settings.github_token
+        if not token:
             logger.warning("No GITHUB_TOKEN set. Cannot post comment.")
             return
+
+        headers = {
+            "Accept": "application/vnd.github.v3+json",
+            "User-Agent": "OSCA-Bot",
+            "Authorization": f"Bearer {token}"
+        }
 
         try:
             owner, repo, issue_number = self._parse_issue_url(issue_url)
             api_url = f"https://api.github.com/repos/{owner}/{repo}/issues/{issue_number}/comments"
             
             async with httpx.AsyncClient() as client:
-                res = await client.post(api_url, headers=self.headers, json={"body": body})
+                res = await client.post(api_url, headers=headers, json={"body": body})
                 res.raise_for_status()
 
             await self.audit.record(AuditRecord(
