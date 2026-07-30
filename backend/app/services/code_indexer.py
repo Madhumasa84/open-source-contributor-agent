@@ -1,8 +1,10 @@
+import asyncio
 import json
 import os
 import uuid
 from pathlib import Path
 
+import aiofiles
 import numpy as np
 import pathspec
 from pydantic import BaseModel
@@ -57,6 +59,22 @@ class CodeIndexer:
         np.random.seed(sum(ord(c) for c in text_input) % 2**32)
         return np.random.rand(384).tolist()
 
+    def _collect_files(self, repo_path: Path, ignore_spec: pathspec.PathSpec | None) -> list[Path]:
+        collected = []
+        for root, dirs, files in os.walk(repo_path):
+            dirs[:] = [d for d in dirs if d not in self.skip_dirs]
+            for file in files:
+                if file.endswith('.lock'):
+                    continue
+                file_p = Path(root) / file
+                if file_p.suffix not in self.extensions:
+                    continue
+                rel_path = file_p.relative_to(repo_path)
+                if ignore_spec and ignore_spec.match_file(str(rel_path)):
+                    continue
+                collected.append(file_p)
+        return collected
+
     async def index_repo(self, repo_path: Path, workflow_id: uuid.UUID) -> IndexResult:
         ignore_spec = None
         gitignore_path = repo_path / '.gitignore'
@@ -67,61 +85,50 @@ class CodeIndexer:
         files_indexed = 0
         chunks_created = 0
 
+        files_to_index = await asyncio.to_thread(self._collect_files, repo_path, ignore_spec)
+
         async with AsyncSessionLocal() as session:
-            for root, dirs, files in os.walk(repo_path):
-                dirs[:] = [d for d in dirs if d not in self.skip_dirs]
-
-                for file in files:
-                    if file.endswith('.lock'):
-                        continue
-
-                    file_p = Path(root) / file
-                    if file_p.suffix not in self.extensions:
-                        continue
-
-                    rel_path = file_p.relative_to(repo_path)
+            for file_p in files_to_index:
+                rel_path = file_p.relative_to(repo_path)
+                files_indexed += 1
+                try:
+                    async with aiofiles.open(file_p, mode='r', encoding='utf-8') as f:
+                        content = await f.read()
+                    lines = content.split('\n')
+                    chunk_size = 40
+                    overlap = 10
                     
-                    if ignore_spec and ignore_spec.match_file(str(rel_path)):
-                        continue
-
-                    files_indexed += 1
-                    try:
-                        content = file_p.read_text(encoding='utf-8')
-                        lines = content.split('\n')
-                        chunk_size = 40
-                        overlap = 10
-                        
-                        for i in range(0, len(lines), chunk_size - overlap):
-                            chunk_lines = lines[i:i + chunk_size]
-                            chunk_content = '\n'.join(chunk_lines)
-                            if not chunk_content.strip():
-                                continue
-                                
-                            embedding = await self.get_embedding(chunk_content)
-                            if not embedding:
-                                continue
-
-                            chunk_id = str(uuid.uuid4())
+                    for i in range(0, len(lines), chunk_size - overlap):
+                        chunk_lines = lines[i:i + chunk_size]
+                        chunk_content = '\n'.join(chunk_lines)
+                        if not chunk_content.strip():
+                            continue
                             
-                            await session.execute(
-                                text("""
-                                    INSERT INTO code_chunks (id, workflow_id, file_path, start_line, end_line, content, embedding)
-                                    VALUES (:id, :workflow_id, :file_path, :start_line, :end_line, :content, :embedding)
-                                """),
-                                {
-                                    "id": chunk_id,
-                                    "workflow_id": str(workflow_id),
-                                    "file_path": str(rel_path),
-                                    "start_line": i + 1,
-                                    "end_line": i + len(chunk_lines),
-                                    "content": chunk_content,
-                                    "embedding": json.dumps(embedding)
-                                }
-                            )
-                            chunks_created += 1
-                    except Exception:
-                        pass
+                        embedding = await self.get_embedding(chunk_content)
+                        if not embedding:
+                            continue
+
+                        chunk_id = str(uuid.uuid4())
                         
+                        await session.execute(
+                            text("""
+                                INSERT INTO code_chunks (id, workflow_id, file_path, start_line, end_line, content, embedding)
+                                VALUES (:id, :workflow_id, :file_path, :start_line, :end_line, :content, :embedding)
+                            """),
+                            {
+                                "id": chunk_id,
+                                "workflow_id": str(workflow_id),
+                                "file_path": str(rel_path),
+                                "start_line": i + 1,
+                                "end_line": i + len(chunk_lines),
+                                "content": chunk_content,
+                                "embedding": json.dumps(embedding)
+                            }
+                        )
+                        chunks_created += 1
+                except Exception:
+                    pass
+
             await session.commit()
             
             await self.audit.record(AuditRecord(
