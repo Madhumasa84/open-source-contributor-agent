@@ -30,16 +30,32 @@ class SafeToolExecutor:
         self.workspace_root = self.settings.workspace_root
 
     def resolve_path(self, path: str | Path) -> Path:
+        import os
+
         candidate = Path(path).expanduser()
         if not candidate.is_absolute():
             candidate = self.workspace_root / candidate
-        resolved = candidate.resolve()
-        if resolved != self.workspace_root and self.workspace_root not in resolved.parents:
-            raise PermissionDeniedError(f"path is outside workspace root: {resolved}")
+
+        # Lexical validation to prevent traversal via '..' before symlinks are resolved
+        absolute_path = Path(os.path.abspath(candidate))
+        try:
+            absolute_path.relative_to(self.workspace_root)
+        except ValueError:
+            raise PermissionDeniedError(f"path is outside workspace root: {absolute_path}")
+
+        # Resolve symlinks and perform final validation
+        resolved = absolute_path.resolve()
+        try:
+            resolved.relative_to(self.workspace_root)
+        except ValueError:
+            raise PermissionDeniedError(f"path resolves outside workspace root: {resolved}")
+
         return resolved
 
     async def read_file(self, path: str | Path) -> str:
         resolved = self.resolve_path(path)
+
+        # We record the audit first to minimize the window between check and use.
         await self.audit.record(
             AuditRecord(
                 action="tool.file_read",
@@ -47,12 +63,35 @@ class SafeToolExecutor:
                 metadata={"path": str(resolved)},
             )
         )
+
+        # Re-verify path strictly before reading to mitigate TOCTOU symlink attacks
+        try:
+            resolved.resolve().relative_to(self.workspace_root)
+        except ValueError:
+            raise PermissionDeniedError(f"path escaped workspace before reading: {resolved}")
+
         return await asyncio.to_thread(resolved.read_text, encoding="utf-8")
 
     async def write_file(self, path: str | Path, content: str, approved_by: str) -> None:
+        # Re-verify the parent path *before* calling mkdir to prevent it from escaping
+        # if the parent is a symlink pointing outside the workspace.
         resolved = self.resolve_path(path)
+
+        try:
+            resolved.parent.resolve().relative_to(self.workspace_root)
+        except ValueError:
+            raise PermissionDeniedError(f"parent path escaped workspace before directory creation: {resolved.parent}")
+
         resolved.parent.mkdir(parents=True, exist_ok=True)
+
+        # Re-verify path strictly before writing
+        try:
+            resolved.resolve().relative_to(self.workspace_root)
+        except ValueError:
+            raise PermissionDeniedError(f"path escaped workspace after directory creation: {resolved}")
+
         await asyncio.to_thread(resolved.write_text, content, encoding="utf-8")
+
         await self.audit.record(
             AuditRecord(
                 action="tool.file_write",
@@ -74,6 +113,13 @@ class SafeToolExecutor:
             raise ValueError("command must not be empty")
 
         resolved_cwd = self.resolve_path(cwd or self.workspace_root)
+
+        # Re-verify cwd before running command to mitigate TOCTOU symlink attacks
+        try:
+            resolved_cwd.resolve().relative_to(self.workspace_root)
+        except ValueError:
+            raise PermissionDeniedError(f"cwd escaped workspace: {resolved_cwd}")
+
         timeout_seconds = command_timeout or self.settings.max_command_seconds
         await self.audit.record(
             AuditRecord(
