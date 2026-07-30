@@ -297,29 +297,22 @@ async def get_workflows(
     limit: int = Query(20, gt=0, le=100),
 ):
     async with AsyncSessionLocal() as session:
-        result = await session.execute(select(WorkflowRun))
-        runs = result.scalars().all()
+        query = select(WorkflowRun)
         
-        filtered = []
-        for r in runs:
-            td = r.triage_data or {}
+        if good_first_issue is not None:
+            query = query.where(WorkflowRun.triage_data["good_first_issue"].as_boolean() == good_first_issue)
             
-            if good_first_issue is not None:
-                if td.get("good_first_issue") != good_first_issue:
-                    continue
+        if contributor_level is not None:
+            query = query.where(WorkflowRun.triage_data["contributor_level"].as_string() == contributor_level)
             
-            if contributor_level is not None:
-                if td.get("contributor_level") != contributor_level:
-                    continue
-                    
-            if min_fixability is not None:
-                if td.get("fixability_score", 0) < min_fixability:
-                    continue
-                    
-            filtered.append(r)
+        if min_fixability is not None:
+            query = query.where(WorkflowRun.triage_data["fixability_score"].as_integer() >= min_fixability)
             
-        filtered.sort(key=lambda x: (x.triage_data or {}).get("fixability_score", 0), reverse=True)
-        paginated = filtered[skip : skip + limit]
+        query = query.order_by(WorkflowRun.triage_data["fixability_score"].as_integer().desc().nulls_last())
+        query = query.offset(skip).limit(limit)
+
+        result = await session.execute(query)
+        paginated = result.scalars().all()
         
         return [
             {
