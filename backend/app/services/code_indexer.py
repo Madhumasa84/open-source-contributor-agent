@@ -68,6 +68,7 @@ class CodeIndexer:
         chunks_created = 0
 
         async with AsyncSessionLocal() as session:
+            batch_params = []
             for root, dirs, files in os.walk(repo_path):
                 dirs[:] = [d for d in dirs if d not in self.skip_dirs]
 
@@ -103,25 +104,38 @@ class CodeIndexer:
 
                             chunk_id = str(uuid.uuid4())
                             
-                            await session.execute(
-                                text("""
-                                    INSERT INTO code_chunks (id, workflow_id, file_path, start_line, end_line, content, embedding)
-                                    VALUES (:id, :workflow_id, :file_path, :start_line, :end_line, :content, :embedding)
-                                """),
-                                {
-                                    "id": chunk_id,
-                                    "workflow_id": str(workflow_id),
-                                    "file_path": str(rel_path),
-                                    "start_line": i + 1,
-                                    "end_line": i + len(chunk_lines),
-                                    "content": chunk_content,
-                                    "embedding": json.dumps(embedding)
-                                }
-                            )
+                            batch_params.append({
+                                "id": chunk_id,
+                                "workflow_id": str(workflow_id),
+                                "file_path": str(rel_path),
+                                "start_line": i + 1,
+                                "end_line": i + len(chunk_lines),
+                                "content": chunk_content,
+                                "embedding": json.dumps(embedding)
+                            })
                             chunks_created += 1
+
+                            if len(batch_params) >= 500:
+                                await session.execute(
+                                    text("""
+                                        INSERT INTO code_chunks (id, workflow_id, file_path, start_line, end_line, content, embedding)
+                                        VALUES (:id, :workflow_id, :file_path, :start_line, :end_line, :content, :embedding)
+                                    """),
+                                    batch_params
+                                )
+                                batch_params = []
                     except Exception:
                         pass
                         
+            if batch_params:
+                await session.execute(
+                    text("""
+                        INSERT INTO code_chunks (id, workflow_id, file_path, start_line, end_line, content, embedding)
+                        VALUES (:id, :workflow_id, :file_path, :start_line, :end_line, :content, :embedding)
+                    """),
+                    batch_params
+                )
+
             await session.commit()
             
             await self.audit.record(AuditRecord(
