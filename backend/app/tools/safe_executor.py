@@ -13,6 +13,17 @@ class PermissionDeniedError(RuntimeError):
     pass
 
 
+ALLOWED_COMMANDS = {
+    "git",
+    "python",
+    "pytest",
+    "npm",
+    "go",
+    "cargo",
+    "flake8",
+}
+
+
 @dataclass(slots=True)
 class CommandResult:
     command: list[str]
@@ -72,6 +83,9 @@ class SafeToolExecutor:
     ) -> CommandResult:
         if not command:
             raise ValueError("command must not be empty")
+
+        if command[0] not in ALLOWED_COMMANDS:
+            raise PermissionDeniedError(f"Command not allowed: {command[0]}")
 
         resolved_cwd = self.resolve_path(cwd or self.workspace_root)
         timeout_seconds = command_timeout or self.settings.max_command_seconds
