@@ -1,3 +1,4 @@
+import React from "react";
 "use client";
 
 import { AlertTriangle, BookOpen, FileCode2, GitPullRequestDraft, Loader2, ShieldAlert, TestTube2 } from "lucide-react";
