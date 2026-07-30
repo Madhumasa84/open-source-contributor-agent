@@ -115,6 +115,16 @@ async def approve_final(workflow_id: str, request: ApprovalRequest) -> ApprovalR
 @router.post("/{workflow_id}/pr-draft", response_model=PRDraft)
 async def generate_pr_draft(workflow_id: str, request: PRDraftRequest) -> PRDraft:
     state = await get_or_load_workflow(workflow_id)
+    if state.final_approval != ApprovalStatus.approved:
+        await state.audit.record(
+            AuditRecord(
+                action="approval.final.blocked",
+                status="blocked",
+                metadata={"workflow_id": state.workflow_id, "required_gate": "final_approval"},
+            )
+        )
+        raise HTTPException(status_code=403, detail="Gate 2 (Final) approval is required.")
+
     return PRDraftGenerator().generate(
         issue_url=request.issue_url,
         plan=request.plan,
@@ -126,10 +136,16 @@ async def generate_pr_draft(workflow_id: str, request: PRDraftRequest) -> PRDraf
 @router.post("/{workflow_id}/github/draft-pr")
 async def create_github_draft_pr(workflow_id: str) -> dict[str, str]:
     state = await get_or_load_workflow(workflow_id)
-    try:
-        await workflow_engine.assert_final_approval(state)
-    except RuntimeError as exc:
-        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    if state.final_approval != ApprovalStatus.approved:
+        await state.audit.record(
+            AuditRecord(
+                action="approval.final.blocked",
+                status="blocked",
+                metadata={"workflow_id": state.workflow_id, "required_gate": "final_approval"},
+            )
+        )
+        raise HTTPException(status_code=403, detail="Gate 2 (Final) approval is required.")
+
     return {
         "status": "ready",
         "message": (
@@ -256,6 +272,13 @@ async def run_patch_agent_task(workflow_id: str, state: WorkflowState):
 async def generate_patch(workflow_id: str, background_tasks: BackgroundTasks):
     state = await get_or_load_workflow(workflow_id)
     if state.plan_approval != ApprovalStatus.approved:
+        await state.audit.record(
+            AuditRecord(
+                action="approval.plan.blocked",
+                status="blocked",
+                metadata={"workflow_id": state.workflow_id, "required_gate": "plan_approval"},
+            )
+        )
         raise HTTPException(status_code=403, detail="Gate 1 (Plan) approval is required.")
 
     if not state.repository_path:
