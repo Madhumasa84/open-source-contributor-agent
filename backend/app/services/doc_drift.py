@@ -1,4 +1,5 @@
 import logging
+import re
 from app.services.github_bot import GitHubBot
 from app.services.audit import AuditLogger, AuditRecord
 
@@ -33,7 +34,17 @@ class DocDriftDetector:
                 return
                 
             try:
-                owner, repo, _ = self.bot._parse_issue_url(repo_url + "/issues/0") # hack to get owner/repo
+                # Robustly parse owner and repo from repo_url
+                clean_url = re.sub(r'^(https?://)?(www\.)?github\.com/', '', repo_url)
+                clean_url = re.sub(r'^git@github\.com:', '', clean_url)
+                parts = [p for p in clean_url.split('/') if p]
+                if len(parts) < 2:
+                    logger.error(f"Could not parse owner and repo from URL: {repo_url}")
+                    return
+                owner, repo = parts[0], parts[1]
+                if repo.endswith('.git'):
+                    repo = repo[:-4]
+
                 api_url = f"https://api.github.com/repos/{owner}/{repo}/issues"
                 
                 body = (
