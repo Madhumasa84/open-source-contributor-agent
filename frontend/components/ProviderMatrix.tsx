@@ -1,3 +1,4 @@
+import React from "react";
 "use client";
 
 import { BrainCircuit, CheckCircle2, Server, WifiOff } from "lucide-react";

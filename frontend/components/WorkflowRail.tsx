@@ -1,3 +1,4 @@
+import React from "react";
 import { Check, Circle, ShieldCheck } from "lucide-react";
 import clsx from "clsx";
 import type { WorkflowStage } from "@/lib/types";

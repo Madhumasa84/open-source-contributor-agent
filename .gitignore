@@ -32,3 +32,4 @@ backend/run_user_tests.py
 backend/test_features.py
 backend/test_api.py
 *.db
+osca.db*

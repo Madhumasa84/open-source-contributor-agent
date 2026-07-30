@@ -1,3 +1,4 @@
+import React from "react";
 import { Ban, Check, PauseCircle, RotateCcw } from "lucide-react";
 import type { ApprovalStatus } from "@/lib/types";
 
