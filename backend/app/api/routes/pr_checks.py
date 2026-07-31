@@ -1,10 +1,12 @@
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
-from pathlib import Path
-from app.services.audit import AuditLogger
-from app.tools.safe_executor import SafeToolExecutor
-from app.services.test_runner import TestRunnerService
 import logging
+from pathlib import Path
+
+from fastapi import APIRouter
+from pydantic import BaseModel
+
+from app.services.audit import AuditLogger
+from app.services.test_runner import TestRunnerService
+from app.tools.safe_executor import SafeToolExecutor
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +37,9 @@ async def run_pr_precheck(request: PRPreCheckRequest):
     
     # 2. Check secrets (Simulation of SecurityReviewer)
     no_secrets = True
-    if request.diff_content and ("BEGIN RSA" in request.diff_content or "AWS_ACCESS_KEY" in request.diff_content):
+    if request.diff_content and (
+        "BEGIN RSA" in request.diff_content or "AWS_ACCESS_KEY" in request.diff_content
+    ):
         no_secrets = False
         
     # 3. Check style matches (Simulation - in reality would run lint/format checks)
