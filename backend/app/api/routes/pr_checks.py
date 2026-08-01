@@ -37,7 +37,9 @@ async def run_pr_precheck(request: PRPreCheckRequest):
     
     # 2. Check secrets (Simulation of SecurityReviewer)
     no_secrets = True
-    if request.diff_content and ("BEGIN RSA" in request.diff_content or "AWS_ACCESS_KEY" in request.diff_content):
+    if request.diff_content and (
+        "BEGIN RSA" in request.diff_content or "AWS_ACCESS_KEY" in request.diff_content
+    ):
         no_secrets = False
         
     # 3. Check style matches (Simulation - in reality would run lint/format checks)
